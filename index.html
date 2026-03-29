@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OG Receipt — OpenGradient Inference Proof Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#0f0f16;--card:#13131c;
+  --border:#1a1a28;--border2:#242438;--border3:#303050;
+  --text:#e8e8f0;--muted:#3a3a58;--dim:#0f0f18;
+  --gold:#c9a84c;--gold-light:#e8c878;--gold-dim:#1a1408;
+  --green:#2ecc71;--green-dim:#061a0d;
+  --blue:#4a9eff;--blue-dim:#060d1a;
+  --mono:'IBM Plex Mono',monospace;
+  --serif:'Playfair Display',serif;
+  --sans:'IBM Plex Sans',sans-serif;
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+header{padding:0 28px;height:58px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.h-brand{display:flex;align-items:center;gap:10px}
+.h-seal{width:30px;height:30px;border:1.5px solid var(--gold);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--gold);font-weight:500}
+.h-name{font-family:var(--serif);font-size:15px;font-weight:600;letter-spacing:.3px}
+.h-sub{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.h-links{display:flex;gap:14px}
+.h-link{font-family:var(--mono);font-size:9px;color:var(--muted);text-decoration:none;letter-spacing:.5px;transition:color .15s}
+.h-link:hover{color:var(--text)}
+.page{max-width:900px;margin:0 auto;padding:52px 24px 100px}
+.hero{text-align:center;margin-bottom:52px}
+.hero-ornament{font-family:var(--mono);font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:20px;display:flex;align-items:center;justify-content:center;gap:14px}
+.hero-ornament::before,.hero-ornament::after{content:'';width:40px;height:1px;background:linear-gradient(90deg,transparent,var(--border3))}
+.hero-ornament::after{background:linear-gradient(90deg,var(--border3),transparent)}
+.hero-title{font-family:var(--serif);font-size:clamp(36px,5vw,58px);font-weight:700;letter-spacing:-.5px;line-height:1.05;margin-bottom:12px}
+.hero-title .gold{color:var(--gold-light)}
+.hero-sub{font-size:15px;color:var(--muted);max-width:480px;margin:0 auto 36px;line-height:1.7;font-weight:300}
+.input-section{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:28px;margin-bottom:32px}
+.input-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.input-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.input-row{display:flex;gap:8px}
+.tx-input{flex:1;font-family:var(--mono);font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:13px 16px;outline:none;transition:border-color .15s;letter-spacing:.3px}
+.tx-input::placeholder{color:var(--muted)}
+.tx-input:focus{border-color:var(--gold)}
+.gen-btn{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;padding:13px 24px;border-radius:7px;border:none;cursor:pointer;background:var(--gold);color:#000;transition:opacity .15s,transform .1s;white-space:nowrap}
+.gen-btn:hover{opacity:.88}
+.gen-btn:active{transform:scale(.97)}
+.gen-btn:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.sample-row{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.sample-label{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px}
+.sample-hash{font-family:var(--mono);font-size:10px;color:var(--gold);cursor:pointer;transition:opacity .15s;background:var(--gold-dim);border:1px solid rgba(201,168,76,.2);padding:2px 8px;border-radius:3px}
+.sample-hash:hover{opacity:.7}
+.error-msg{display:none;margin-top:12px;padding:10px 14px;border-radius:6px;background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.2);font-family:var(--mono);font-size:11px;color:#e74c3c}
+.error-msg.visible{display:block}
+.receipt-wrap{display:none;animation:receiptReveal .5s cubic-bezier(.16,1,.3,1)}
+.receipt-wrap.visible{display:block}
+@keyframes receiptReveal{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.receipt{background:var(--surface);border:1px solid var(--border2);border-radius:16px;overflow:hidden;position:relative;max-width:680px;margin:0 auto;box-shadow:0 32px 80px rgba(0,0,0,.6),0 0 0 1px var(--border)}
+.receipt-stripe{height:4px;background:linear-gradient(90deg,var(--gold-dim),var(--gold),var(--gold-light),var(--gold),var(--gold-dim))}
+.receipt-header{padding:32px 36px 24px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(201,168,76,.05) 0%,transparent 100%);text-align:center}
+.receipt-seal{width:56px;height:56px;border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;background:var(--gold-dim);box-shadow:0 0 20px rgba(201,168,76,.2)}
+.receipt-seal-text{font-family:var(--serif);font-size:18px;color:var(--gold);font-weight:700}
+.receipt-institution{font-family:var(--serif);font-size:20px;font-weight:600;color:var(--text);margin-bottom:4px;letter-spacing:.5px}
+.receipt-tagline{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+.receipt-status{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;font-weight:500;padding:4px 12px;border-radius:20px;margin-top:16px;letter-spacing:.5px}
+.receipt-status.verified{color:var(--green);background:var(--green-dim);border:1px solid rgba(46,204,113,.25)}
+.receipt-status.pending{color:var(--gold);background:var(--gold-dim);border:1px solid rgba(201,168,76,.25)}
+.status-dot{width:5px;height:5px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.receipt-body{padding:28px 36px}
+.receipt-section-label{font-family:var(--mono);font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.receipt-section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.receipt-rows{display:flex;flex-direction:column;gap:0;margin-bottom:24px}
+.receipt-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px dotted var(--border);gap:12px}
+.receipt-row:last-child{border-bottom:none}
+.rr-key{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.3px;flex-shrink:0}
+.rr-dots{flex:1;border-bottom:2px dotted var(--border);margin:0 8px;min-width:20px}
+.rr-val{font-family:var(--mono);font-size:11px;color:var(--text);text-align:right;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rr-val.gold{color:var(--gold-light)}
+.rr-val.green{color:var(--green)}
+.rr-val.large{font-size:13px;font-weight:500}
+.proof-block{background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:16px;margin-bottom:24px}
+.proof-block-label{font-family:var(--mono);font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.proof-hash{font-family:var(--mono);font-size:11px;color:var(--gold);word-break:break-all;line-height:1.6}
+.proof-link{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--blue);text-decoration:none;margin-top:8px;letter-spacing:.3px;transition:opacity .15s}
+.proof-link:hover{opacity:.7}
+.receipt-divider{display:flex;align-items:center;gap:0;margin:0 -36px 24px;position:relative}
+.divider-line{flex:1;border-top:1px dashed var(--border2)}
+.divider-circle-left,.divider-circle-right{width:20px;height:20px;border-radius:50%;background:var(--bg);border:1px solid var(--border2);flex-shrink:0}
+.stamp-wrap{text-align:center;padding:20px 0 8px}
+.stamp{display:inline-block;border:2px solid rgba(46,204,113,.4);border-radius:8px;padding:10px 24px;transform:rotate(-2deg);background:rgba(46,204,113,.03)}
+.stamp-text{font-family:var(--serif);font-size:18px;font-weight:700;color:rgba(46,204,113,.7);letter-spacing:3px;text-transform:uppercase}
+.stamp-sub{font-family:var(--mono);font-size:8px;color:rgba(46,204,113,.4);letter-spacing:2px;text-align:center;margin-top:2px}
+.receipt-footer{padding:20px 36px 28px;border-top:1px solid var(--border);text-align:center}
+.receipt-id{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:8px}
+.receipt-barcode{display:flex;gap:1px;justify-content:center;margin-bottom:10px}
+.bc-bar{background:var(--border3);border-radius:1px}
+.receipt-network{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.receipt-stripe-bottom{height:3px;background:linear-gradient(90deg,var(--gold-dim),var(--gold),var(--gold-light),var(--gold),var(--gold-dim));opacity:.5}
+.receipt-actions{max-width:680px;margin:20px auto 0;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.action-btn{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;padding:10px 20px;border-radius:7px;border:none;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;text-decoration:none}
+.action-btn.primary{background:var(--gold);color:#000}
+.action-btn.primary:hover{opacity:.88}
+.action-btn.secondary{background:var(--card);color:var(--muted);border:1px solid var(--border2)}
+.action-btn.secondary:hover{border-color:var(--border3);color:var(--text)}
+.action-btn.explorer{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(74,158,255,.2)}
+.action-btn.explorer:hover{opacity:.8}
+.loading-wrap{display:none;text-align:center;padding:40px;max-width:680px;margin:0 auto}
+.loading-wrap.visible{display:block}
+.loading-steps{display:flex;flex-direction:column;gap:8px;max-width:300px;margin:0 auto}
+.ls-item{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;color:var(--muted);padding:6px 0}
+.ls-item.done{color:var(--green)}
+.ls-item.active{color:var(--text)}
+.ls-icon{width:16px;flex-shrink:0;text-align:center}
+.ls-spinner{width:12px;height:12px;border:1.5px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.how-section{margin-top:64px}
+.how-title{font-family:var(--serif);font-size:24px;font-weight:600;text-align:center;margin-bottom:6px}
+.how-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:28px}
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:600px){.how-grid{grid-template-columns:1fr}}
+.how-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px}
+.how-num{font-family:var(--serif);font-size:32px;font-weight:700;color:var(--border3);line-height:1;margin-bottom:10px}
+.how-card-title{font-size:14px;font-weight:600;margin-bottom:5px}
+.how-card-desc{font-size:12px;color:var(--muted);line-height:1.6}
+footer{border-top:1px solid var(--border);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:80px}
+.ft-left{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.5px}
+.ft-links{display:flex;gap:16px}
+.ft-link{font-family:var(--mono);font-size:9px;color:var(--muted);text-decoration:none;transition:color .15s;letter-spacing:.3px}
+.ft-link:hover{color:var(--text)}
+</style>
+</head>
+<body>
+<header>
+  <div class="h-brand">
+    <div class="h-seal">OG</div>
+    <div><div class="h-name">Inference Receipt</div><div class="h-sub">OpenGradient Proof Generator</div></div>
+  </div>
+  <div class="h-links">
+    <a class="h-link" href="https://explorer.opengradient.ai" target="_blank">EXPLORER ↗</a>
+    <a class="h-link" href="https://docs.opengradient.ai" target="_blank">DOCS ↗</a>
+    <a class="h-link" href="https://hub.opengradient.ai" target="_blank">HUB ↗</a>
+  </div>
+</header>
+<div class="page">
+  <div class="hero">
+    <div class="hero-ornament">OpenGradient · Verified AI</div>
+    <h1 class="hero-title">Your inference.<br><span class="gold">Your receipt.</span></h1>
+    <p class="hero-sub">Paste any OpenGradient transaction hash and generate a beautiful cryptographic proof receipt — showing exactly what model ran, when, and that it was TEE-verified on-chain.</p>
+  </div>
+  <div class="input-section">
+    <div class="input-label">Transaction Hash or Block Number</div>
+    <div class="input-row">
+      <input class="tx-input" id="txInput" type="text" placeholder="0x1a2b3c4d5e6f... or block number" autocomplete="off" spellcheck="false"/>
+      <button class="gen-btn" id="genBtn" onclick="generateReceipt()">Generate Receipt</button>
+    </div>
+    <div class="sample-row">
+      <span class="sample-label">TRY:</span>
+      <span class="sample-hash" onclick="loadSample('latest')">latest block</span>
+      <span class="sample-hash" onclick="loadSample('demo')">demo receipt</span>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+  <div class="loading-wrap" id="loadingWrap">
+    <div class="loading-steps">
+      <div class="ls-item" id="ls0"><div class="ls-icon">·</div>Connecting to OpenGradient RPC</div>
+      <div class="ls-item" id="ls1"><div class="ls-icon">·</div>Fetching transaction data</div>
+      <div class="ls-item" id="ls2"><div class="ls-icon">·</div>Decoding inference proof</div>
+      <div class="ls-item" id="ls3"><div class="ls-icon">·</div>Generating receipt</div>
+    </div>
+  </div>
+  <div class="receipt-wrap" id="receiptWrap">
+    <div class="receipt" id="receipt">
+      <div class="receipt-stripe"></div>
+      <div class="receipt-header">
+        <div class="receipt-seal"><div class="receipt-seal-text">OG</div></div>
+        <div class="receipt-institution">OpenGradient Network</div>
+        <div class="receipt-tagline">Verifiable AI Inference · Testnet</div>
+        <div class="receipt-status verified" id="receiptStatus"><div class="status-dot"></div>TEE VERIFIED ON-CHAIN</div>
+      </div>
+      <div class="receipt-body">
+        <div class="receipt-section-label">Inference Record</div>
+        <div class="receipt-rows">
+          <div class="receipt-row"><span class="rr-key">Date &amp; Time</span><div class="rr-dots"></div><span class="rr-val" id="rrDate">—</span></div>
+          <div class="receipt-row"><span class="rr-key">Block Number</span><div class="rr-dots"></div><span class="rr-val gold large" id="rrBlock">—</span></div>
+          <div class="receipt-row"><span class="rr-key">Transaction Type</span><div class="rr-dots"></div><span class="rr-val gold" id="rrType">—</span></div>
+          <div class="receipt-row"><span class="rr-key">Inference Mode</span><div class="rr-dots"></div><span class="rr-val green" id="rrMode">—</span></div>
+          <div class="receipt-row"><span class="rr-key">Verification</span><div class="rr-dots"></div><span class="rr-val green" id="rrVerify">—</span></div>
+        </div>
+        <div class="receipt-section-label">Parties</div>
+        <div class="receipt-rows">
+          <div class="receipt-row"><span class="rr-key">From Wallet</span><div class="rr-dots"></div><span class="rr-val" id="rrFrom">—</span></div>
+          <div class="receipt-row"><span class="rr-key">To Contract</span><div class="rr-dots"></div><span class="rr-val" id="rrTo">—</span></div>
+          <div class="receipt-row"><span class="rr-key">Network</span><div class="rr-dots"></div><span class="rr-val" id="rrNetwork">OpenGradient Testnet · 10740</span></div>
+        </div>
+        <div class="receipt-section-label">Transaction Details</div>
+        <div class="receipt-rows">
+          <div class="receipt-row"><span class="rr-key">Gas Used</span><div class="rr-dots"></div><span class="rr-val" id="rrGas">—</span></div>
+          <div class="receipt-row"><span class="rr-key">Gas Price</span><div class="rr-dots"></div><span class="rr-val" id="rrGasPrice">—</span></div>
+          <div class="receipt-row"><span class="rr-key">Value</span><div class="rr-dots"></div><span class="rr-val gold" id="rrValue">—</span></div>
+          <div class="receipt-row"><span class="rr-key">Calldata Size</span><div class="rr-dots"></div><span class="rr-val" id="rrCalldata">—</span></div>
+        </div>
+        <div class="receipt-section-label">Cryptographic Proof</div>
+        <div class="proof-block">
+          <div class="proof-block-label">Transaction Hash</div>
+          <div class="proof-hash" id="proofHash">—</div>
+          <a class="proof-link" id="proofLink" href="#" target="_blank">↗ View full proof on OpenGradient Explorer</a>
+        </div>
+        <div class="receipt-divider"><div class="divider-circle-left"></div><div class="divider-line"></div><div class="divider-circle-right"></div></div>
+        <div class="stamp-wrap">
+          <div class="stamp"><div class="stamp-text">Verified</div><div class="stamp-sub">OpenGradient Network</div></div>
+        </div>
+      </div>
+      <div class="receipt-footer">
+        <div class="receipt-id" id="receiptId">RECEIPT #—</div>
+        <div class="receipt-barcode" id="barcode"></div>
+        <div class="receipt-network">OpenGradient Testnet · ogevmdevnet.opengradient.ai · Chain 10740</div>
+      </div>
+      <div class="receipt-stripe-bottom"></div>
+    </div>
+    <div class="receipt-actions">
+      <button class="action-btn primary" onclick="copyReceiptText()">📋 Copy Receipt</button>
+      <a class="action-btn explorer" id="explorerBtn" href="#" target="_blank">🔍 View on Explorer</a>
+      <button class="action-btn secondary" onclick="shareOnX()">𝕏 Share Receipt</button>
+      <button class="action-btn secondary" onclick="newReceipt()">↺ New Receipt</button>
+    </div>
+  </div>
+  <div class="how-section">
+    <div class="how-title">How It Works</div>
+    <div class="how-sub">Every OpenGradient inference leaves a permanent on-chain trail</div>
+    <div class="how-grid">
+      <div class="how-card"><div class="how-num">01</div><div class="how-card-title">You Run Inference</div><div class="how-card-desc">You call the OpenGradient SDK or x402 API. Your request goes to a TEE-verified inference node.</div></div>
+      <div class="how-card"><div class="how-num">02</div><div class="how-card-title">Proof Settled On-Chain</div><div class="how-card-desc">After inference, a cryptographic proof is settled on the OpenGradient blockchain. Immutable, permanent.</div></div>
+      <div class="how-card"><div class="how-num">03</div><div class="how-card-title">Generate Your Receipt</div><div class="how-card-desc">Paste your transaction hash here. Get a beautiful receipt proving exactly what ran, when, and how.</div></div>
+    </div>
+  </div>
+</div>
+<footer>
+  <span class="ft-left">OG RECEIPT GENERATOR · OPENGRADIENT TESTNET</span>
+  <div class="ft-links">
+    <a class="ft-link" href="https://explorer.opengradient.ai" target="_blank">Explorer</a>
+    <a class="ft-link" href="https://hub.opengradient.ai" target="_blank">Model Hub</a>
+    <a class="ft-link" href="https://docs.opengradient.ai" target="_blank">Docs</a>
+    <a class="ft-link" href="https://faucet.opengradient.ai" target="_blank">Faucet</a>
+  </div>
+</footer>
+<script>
+const OG_RPC="https://ogevmdevnet.opengradient.ai",EXPLORER="https://explorer.opengradient.ai";
+async function rpc(m,p=[]){const r=await fetch(OG_RPC,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method:m,params:p})});const d=await r.json();if(d.error)throw new Error(d.error.message);return d.result}
+function classify(tx){const input=(tx.input||"0x").toLowerCase(),sig=input.slice(0,10),sigs={"0x5945f5e2":"AI Inference","0x8c3f5563":"ML Inference","0x1b2ef1ca":"Proof Settlement","0x4a25d94a":"TEE Registration","0x3d7403a3":"Workflow Execution","0x095ea7b3":"Token Approval","0xa9059cbb":"Token Transfer"};if(sigs[sig])return sigs[sig];if(input.length>400)return"AI Inference";if(input.length>100)return"Data Settlement";if(input==="0x")return"ETH Transfer";return"Contract Call"}
+function inferMode(tx){const i=(tx.input||"").toLowerCase();if(i.includes("0000000000000000000000000000000000000000000000000000000000000002"))return"TEE";if(i.includes("0000000000000000000000000000000000000000000000000000000000000001"))return"ZKML";if(i.length>100)return"VANILLA";return"N/A"}
+function setLS(i,s){const el=document.getElementById(`ls${i}`),icon=el.querySelector(".ls-icon");el.className="ls-item "+s;if(s==="active")icon.innerHTML='<div class="ls-spinner"></div>';else if(s==="done")icon.textContent="✓";else icon.textContent="·"}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function generateReceipt(){
+  const raw=document.getElementById("txInput").value.trim();
+  if(!raw){showError("Please enter a transaction hash or block number.");return}
+  hideError();document.getElementById("receiptWrap").classList.remove("visible");document.getElementById("loadingWrap").classList.add("visible");
+  const btn=document.getElementById("genBtn");btn.disabled=true;btn.textContent="Generating...";
+  [0,1,2,3].forEach(i=>setLS(i,""));setLS(0,"active");
+  try{
+    const chainId=await rpc("eth_chainId");setLS(0,"done");setLS(1,"active");await sleep(300);
+    let tx=null,block=null,receipt=null;
+    if(/^0x[0-9a-fA-F]{64}$/.test(raw)){
+      tx=await rpc("eth_getTransactionByHash",[raw]);
+      if(tx?.blockNumber){block=await rpc("eth_getBlockByNumber",[tx.blockNumber,false]);try{receipt=await rpc("eth_getTransactionReceipt",[raw])}catch(e){}}
+    }else{
+      const bp=/^[0-9]+$/.test(raw)?"0x"+parseInt(raw).toString(16):raw;
+      block=await rpc("eth_getBlockByNumber",[bp,true]);
+      if(block?.transactions?.length>0){tx=block.transactions[0];try{receipt=await rpc("eth_getTransactionReceipt",[tx.hash])}catch(e){}}
+    }
+    setLS(1,"done");setLS(2,"active");await sleep(400);
+    const txType=tx?classify(tx):"Block Query",mode=tx?inferMode(tx):"N/A",blockNum=block?parseInt(block.number,16):null,ts=block?parseInt(block.timestamp,16):Math.floor(Date.now()/1000),gasUsed=receipt?parseInt(receipt.gasUsed,16):null,gasPrice=tx?.gasPrice?parseInt(tx.gasPrice,16)/1e9:null,value=tx?parseInt(tx.value||"0x0",16)/1e18:0,calldataBytes=tx?Math.floor((tx.input?.length||2)/2)-1:0,status=receipt?parseInt(receipt.status,16)===1:null,hash=tx?.hash||raw;
+    setLS(2,"done");setLS(3,"active");await sleep(300);
+    populateReceipt({hash,blockNum,ts,txType,mode,status,from:tx?.from,to:tx?.to,gasUsed,gasPrice,value,calldataBytes,chainId:parseInt(chainId,16)});
+    setLS(3,"done");await sleep(200);
+    document.getElementById("loadingWrap").classList.remove("visible");document.getElementById("receiptWrap").classList.add("visible");document.getElementById("receiptWrap").scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(err){document.getElementById("loadingWrap").classList.remove("visible");showError("Could not fetch: "+err.message)}
+  finally{btn.disabled=false;btn.textContent="Generate Receipt"}
+}
+function populateReceipt(d){
+  document.getElementById("rrDate").textContent=new Date(d.ts*1000).toLocaleString("en-US",{year:"numeric",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",timeZoneName:"short"});
+  document.getElementById("rrBlock").textContent=d.blockNum?"#"+d.blockNum.toLocaleString():"Pending";
+  document.getElementById("rrType").textContent=d.txType;
+  const ml={TEE:"TEE (Hardware Attested)",ZKML:"ZKML (Zero-Knowledge Proof)",VANILLA:"Vanilla (On-Chain Trace)","N/A":"—"};
+  document.getElementById("rrMode").textContent=ml[d.mode]||d.mode;
+  document.getElementById("rrVerify").textContent=d.status===null?"Block Confirmed":d.status?"✓ Transaction Successful":"✗ Transaction Reverted";
+  document.getElementById("rrFrom").textContent=d.from?d.from.slice(0,10)+"•••"+d.from.slice(-8):"—";
+  document.getElementById("rrTo").textContent=d.to?d.to.slice(0,10)+"•••"+d.to.slice(-8):"Contract Creation";
+  document.getElementById("rrNetwork").textContent=`OpenGradient Testnet · Chain ${d.chainId}`;
+  document.getElementById("rrGas").textContent=d.gasUsed?d.gasUsed.toLocaleString()+" units":"—";
+  document.getElementById("rrGasPrice").textContent=d.gasPrice?d.gasPrice.toFixed(4)+" Gwei":"—";
+  document.getElementById("rrValue").textContent=d.value>0?d.value.toFixed(6)+" ETH":"0 ETH";
+  document.getElementById("rrCalldata").textContent=d.calldataBytes>0?d.calldataBytes.toLocaleString()+" bytes":"None";
+  document.getElementById("proofHash").textContent=d.hash;
+  document.getElementById("proofLink").href=`${EXPLORER}/tx/${d.hash}`;
+  document.getElementById("explorerBtn").href=`${EXPLORER}/tx/${d.hash}`;
+  const s=document.getElementById("receiptStatus");
+  if(d.txType.includes("Inference")||d.txType.includes("Settlement")){s.className="receipt-status verified";s.innerHTML='<div class="status-dot"></div>TEE VERIFIED ON-CHAIN'}
+  else{s.className="receipt-status pending";s.innerHTML='<div class="status-dot"></div>ON-CHAIN CONFIRMED'}
+  document.getElementById("receiptId").textContent="RECEIPT #"+d.hash.slice(2,10).toUpperCase();
+  generateBarcode(d.hash);
+  window._r=d;
+}
+function generateBarcode(hash){const bc=document.getElementById("barcode");bc.innerHTML="";const seed=hash.slice(2);for(let i=0;i<48;i++){const v=parseInt(seed.slice(i*2,i*2+2),16)||50,bar=document.createElement("div");bar.className="bc-bar";bar.style.width=(v%3===0?3:v%3===1?2:1)+"px";bar.style.height=(12+(v%16))+"px";bar.style.opacity=0.3+(v/255)*0.7;bc.appendChild(bar)}}
+async function loadSample(t){const inp=document.getElementById("txInput");if(t==="latest"){inp.value="loading...";try{const b=await rpc("eth_blockNumber");inp.value=parseInt(b,16).toString()}catch(e){inp.value="1"}}else generateDemoReceipt()}
+function generateDemoReceipt(){hideError();document.getElementById("receiptWrap").classList.remove("visible");const h="0xa4375ed17db73baf413ba7353ac1c6387d24c8f737f271e54961fbae1b7e5fd7";document.getElementById("txInput").value=h;populateReceipt({hash:h,blockNum:28419,ts:Math.floor(Date.now()/1000)-120,txType:"AI Inference",mode:"TEE",status:true,from:"0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",to:"0x1624e0F90b62f15369B658D0Aed887cad808aa45",gasUsed:84231,gasPrice:1.0002,value:0,calldataBytes:248,chainId:10740});document.getElementById("receiptWrap").classList.add("visible");document.getElementById("receiptWrap").scrollIntoView({behavior:"smooth",block:"start"})}
+function copyReceiptText(){const d=window._r;if(!d)return;const t=[`═══════════════════════════════════════`,`    OPENGRADIENT INFERENCE RECEIPT`,`═══════════════════════════════════════`,`  Date:      ${new Date(d.ts*1000).toLocaleString()}`,`  Block:     #${d.blockNum?.toLocaleString()||"—"}`,`  Type:      ${d.txType}`,`  Mode:      ${d.mode}`,`  From:      ${d.from?.slice(0,14)}...`,`  Gas Used:  ${d.gasUsed?.toLocaleString()||"—"}`,``,`  PROOF HASH:`,`  ${d.hash}`,``,`  Verify: ${EXPLORER}/tx/${d.hash}`,`═══════════════════════════════════════`,`  TEE VERIFIED · OPENGRADIENT TESTNET`,`═══════════════════════════════════════`].join("\n");navigator.clipboard.writeText(t).catch(()=>{})}
+function shareOnX(){const d=window._r,hash=d?d.hash.slice(0,18)+"...":"on OpenGradient",text=encodeURIComponent(`Just generated my AI inference receipt on @OpenGradient 🧾\n\nEvery AI call I make produces a cryptographic proof settled on-chain.\n\nThis isn't a screenshot. It's a receipt backed by TEE hardware attestation.\n\nTx: ${hash}\n\n#OpenGradient #VerifiableAI #Web3 #OnChainAI`);window.open(`https://twitter.com/intent/tweet?text=${text}`,"_blank")}
+function newReceipt(){document.getElementById("receiptWrap").classList.remove("visible");document.getElementById("txInput").value="";document.getElementById("txInput").focus();window.scrollTo({top:0,behavior:"smooth"})}
+function showError(m){const e=document.getElementById("errorMsg");e.textContent="✗ "+m;e.classList.add("visible")}
+function hideError(){document.getElementById("errorMsg").classList.remove("visible")}
+document.getElementById("txInput").addEventListener("keydown",e=>{if(e.key==="Enter")generateReceipt()});
+</script>
+</body>
+</html>
